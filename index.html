@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World Electricity — Global Access</title>
+  <style>
+    :root {
+      --bg:        #05071a;
+      --lit:       #ffe055;
+      --lit-hover: #fff4a0;
+      --dark-c:    #162040;
+      --dark-h:    #243060;
+      --unknown:   #0e1627;
+      --tip-bg:    rgba(4, 8, 28, 0.95);
+      --tip-bdr:   rgba(255, 200, 50, 0.28);
+      --text:      #dde3f5;
+      --muted:     #5a6a90;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: var(--text);
+    }
+
+    /* ── Stars ──────────────────────────────────────────────────────── */
+    #stars {
+      position: fixed; inset: 0; z-index: 0;
+      overflow: hidden; pointer-events: none;
+    }
+    .star {
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    /* ── Globe ──────────────────────────────────────────────────────── */
+    #globe {
+      position: fixed; inset: 0; z-index: 1;
+    }
+    /* subtle glow on lit polygons via canvas brightness */
+    #globe canvas {
+      filter: brightness(1.06) contrast(1.08) saturate(1.1);
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    #header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      text-align: center;
+      padding: 28px 24px 0;
+      pointer-events: none;
+    }
+    #header h1 {
+      font-size: clamp(1rem, 2.2vw, 1.5rem);
+      font-weight: 200;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: #c8d5f0;
+      text-shadow: 0 0 60px rgba(80, 140, 255, 0.7),
+                   0 0 120px rgba(80, 140, 255, 0.3);
+    }
+    #header p {
+      margin-top: 8px;
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+    }
+
+    /* ── Legend ─────────────────────────────────────────────────────── */
+    #legend {
+      position: fixed;
+      bottom: 32px; left: 28px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .leg {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.72rem; letter-spacing: 0.07em; color: var(--muted);
+    }
+    .leg-dot {
+      width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0;
+    }
+    .leg-dot.lit  { background: var(--lit);  box-shadow: 0 0 10px var(--lit); }
+    .leg-dot.dark { background: var(--dark-c); border: 1px solid #2a3a60; }
+
+    /* ── Stats panel ────────────────────────────────────────────────── */
+    #stats {
+      position: fixed;
+      bottom: 32px; right: 28px;
+      z-index: 10;
+      text-align: right;
+      font-size: 0.7rem;
+      line-height: 1.7;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+    #stats strong { color: var(--lit); font-weight: 600; }
+    #stats .src {
+      margin-top: 8px;
+      font-size: 0.6rem;
+      opacity: 0.5;
+    }
+
+    /* ── Tooltip ────────────────────────────────────────────────────── */
+    #tip {
+      position: fixed;
+      z-index: 20;
+      pointer-events: none;
+      display: none;
+      min-width: 230px; max-width: 290px;
+    }
+    .tip-card {
+      background: var(--tip-bg);
+      border: 1px solid var(--tip-bdr);
+      border-radius: 14px;
+      padding: 15px 18px;
+      backdrop-filter: blur(24px);
+      box-shadow:
+        0 12px 50px rgba(0,0,0,0.7),
+        0 0 30px rgba(255, 200, 50, 0.06),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .tip-head {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 11px;
+      padding-bottom: 11px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .tip-flag  { font-size: 1.55rem; line-height: 1; flex-shrink: 0; }
+    .tip-name  { font-size: 0.9rem; font-weight: 600; color: #ecedff; flex: 1; }
+    .tip-badge {
+      font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 3px 7px; border-radius: 20px;
+      white-space: nowrap;
+    }
+    .tip-badge.lit  {
+      background: rgba(255,210,60,0.12);
+      color: var(--lit);
+      border: 1px solid rgba(255,210,60,0.3);
+    }
+    .tip-badge.dark {
+      background: rgba(80,100,180,0.12);
+      color: #7a8fc0;
+      border: 1px solid rgba(80,100,180,0.28);
+    }
+    .tip-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px 14px;
+    }
+    .tip-cell { display: flex; flex-direction: column; gap: 2px; }
+    .tip-cell.wide { grid-column: 1 / -1; }
+    .tip-lbl {
+      font-size: 0.6rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted);
+    }
+    .tip-val {
+      font-size: 0.86rem; font-weight: 600; color: #d8e0ff;
+    }
+    .tip-val.accent { color: var(--lit); }
+    .tip-val.dim    { color: #5a6a90; }
+    .tip-note {
+      margin-top: 10px;
+      font-size: 0.67rem;
+      color: var(--muted);
+      font-style: italic;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    /* ── Progress bar in tooltip ────────────────────────────────────── */
+    .progress-bar {
+      grid-column: 1 / -1;
+      margin-top: 2px;
+    }
+    .progress-track {
+      height: 4px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    .progress-fill.lit  { background: linear-gradient(90deg, #f0a020, #ffe055); }
+    .progress-fill.dark { background: linear-gradient(90deg, #2a3a70, #4060a0); }
+
+    /* ── Loader ─────────────────────────────────────────────────────── */
+    #loader {
+      position: fixed; inset: 0; z-index: 40;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+      background: var(--bg);
+      transition: opacity 0.7s ease;
+    }
+    #loader.fade { opacity: 0; pointer-events: none; }
+    .ld-ring {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,220,80,0.15);
+      border-top-color: var(--lit);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes twinkle {
+      0%   { opacity: var(--o, 0.1); transform: scale(.8); }
+      100% { opacity: calc(var(--o, 0.1) + .4); transform: scale(1.2); }
+    }
+    .ld-text {
+      font-size: 0.72rem; letter-spacing: 0.28em;
+      color: var(--muted); text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="stars"></div>
+  <div id="globe"></div>
+
+  <div id="header">
+    <h1>World Electricity Access</h1>
+    <p>Drag to rotate &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Hover a country for data</p>
+  </div>
+
+  <div id="legend">
+    <div class="leg"><div class="leg-dot lit"></div>Reliable electricity (≥90% access)</div>
+    <div class="leg"><div class="leg-dot dark"></div>Limited access (&lt;90%)</div>
+  </div>
+
+  <div id="stats">
+    <div><strong id="s-lit">—</strong> countries powered reliably</div>
+    <div><strong id="s-dark">—</strong> countries with limited access</div>
+    <div class="src">Data: IEA / World Bank 2022–23</div>
+  </div>
+
+  <div id="tip"><div class="tip-card"></div></div>
+
+  <div id="loader">
+    <div class="ld-ring"></div>
+    <div class="ld-text">Initialising globe…</div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="https://unpkg.com/globe.gl@2.26.2/dist/globe.gl.min.js"></script>
+  <script>
+  (() => {
+    'use strict';
+
+    /* ── Star field ─────────────────────────────────────────────────── */
+    const starsEl = document.getElementById('stars');
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < 700; i++) {
+      const s = document.createElement('div');
+      const sz = Math.random() * 1.8 + 0.3;
+      s.className = 'star';
+      s.style.cssText =
+        `left:${(Math.random()*100).toFixed(1)}%;` +
+        `top:${(Math.random()*100).toFixed(1)}%;` +
+        `width:${sz.toFixed(1)}px;height:${sz.toFixed(1)}px;` +
+        `opacity:${(Math.random()*0.55+0.08).toFixed(2)};` +
+        `animation:twinkle ${(2.5+Math.random()*3.5).toFixed(1)}s ease-in-out ` +
+        `${(Math.random()*6).toFixed(1)}s infinite alternate;`;
+      frag.appendChild(s);
+    }
+    starsEl.appendChild(frag);
+
+    /* ── Data helpers ───────────────────────────────────────────────── */
+    // Natural Earth ADMIN names that differ from our data keys
+    const ALIASES = {
+      'United States of America': 'United States',
+      'Dem. Rep. Congo':          'Democratic Republic of the Congo',
+      'Congo':                    'Republic of the Congo',
+      'United Republic of Tanzania': 'Tanzania',
+      'S. Sudan':                 'South Sudan',
+      'Republic of Korea':        'South Korea',
+      'Dem. Rep. Korea':          'North Korea',
+      "Côte d'Ivoire":            'Ivory Coast',
+      "Cote d'Ivoire":            'Ivory Coast',
+      'Czech Republic':           'Czechia',
+      'eSwatini':                 'Eswatini',
+      'Swaziland':                'Eswatini',
+    };
+
+    function getData(adminName) {
+      if (ELECTRICITY_DATA[adminName]) return ELECTRICITY_DATA[adminName];
+      const alias = ALIASES[adminName];
+      return alias ? ELECTRICITY_DATA[alias] || null : null;
+    }
+
+    /* ── Flag emoji ─────────────────────────────────────────────────── */
+    function flagEmoji(iso2) {
+      if (!iso2 || iso2.length !== 2) return '🌍';
+      return [...iso2.toUpperCase()].map(c =>
+        String.fromCodePoint(c.charCodeAt(0) + 127397)
+      ).join('');
+    }
+
+    /* ── Colors & altitudes ─────────────────────────────────────────── */
+    const C = {
+      litBase:    '#FFE055',
+      litHover:   '#FFF5B0',
+      darkBase:   '#162040',
+      darkHover:  '#243060',
+      unknown:    '#0e1627',
+      unknownH:   '#1a2840',
+      side:       'rgba(0,4,20,0.55)',
+      stroke:     'rgba(255,255,255,0.045)',
+    };
+
+    function capColor(feat, hov) {
+      const d = getData(feat.properties.ADMIN);
+      const isHov = feat === hov;
+      if (!d) return isHov ? C.unknownH : C.unknown;
+      if (d.lit) return isHov ? C.litHover : C.litBase;
+      return isHov ? C.darkHover : C.darkBase;
+    }
+
+    function altitude(feat, hov) {
+      const d = getData(feat.properties.ADMIN);
+      if (!d) return feat === hov ? 0.005 : 0.001;
+      if (d.lit) return feat === hov ? 0.015 : 0.009;
+      return feat === hov ? 0.007 : 0.002;
+    }
+
+    /* ── Tooltip ────────────────────────────────────────────────────── */
+    const tipEl  = document.getElementById('tip');
+    const tipBox = tipEl.querySelector('.tip-card');
+    let mx = 0, my = 0;
+
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      if (tipEl.style.display !== 'none') positionTip();
+    });
+
+    function positionTip() {
+      const tw = tipEl.offsetWidth  || 260;
+      const th = tipEl.offsetHeight || 170;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let lx = mx + 22, ly = my - 12;
+      if (lx + tw > vw - 16) lx = mx - tw - 16;
+      if (ly + th > vh - 16) ly = vh - th - 16;
+      if (ly < 80) ly = 80;
+      tipEl.style.left = lx + 'px';
+      tipEl.style.top  = ly + 'px';
+    }
+
+    function showTip(feat) {
+      if (!feat?.properties) return;
+      const name = feat.properties.ADMIN;
+      const iso2 = feat.properties.ISO_A2;
+      const d    = getData(name);
+      const flag = flagEmoji(iso2);
+
+      if (!d) {
+        tipBox.innerHTML = `
+          <div class="tip-head">
+            <span class="tip-flag">${flag}</span>
+            <span class="tip-name">${name}</span>
+          </div>
+          <div class="tip-note">No electricity data available for this territory.</div>`;
+      } else if (d.lit) {
+        tipBox.innerHTML = `
+          <div class="tip-head">
+            <span class="tip-flag">${flag}</span>
+            <span class="tip-name">${name}</span>
+            <span class="tip-badge lit">⚡ POWERED</span>
+          </div>
+          <div class="tip-grid">
+            <div class="tip-cell">
+              <div class="tip-lbl">Access Rate</div>
+              <div class="tip-val accent">${d.access_pct}%</div>
+            </div>
+            <div class="tip-cell">
+              <div class="tip-lbl">Generation</div>
+              <div class="tip-val">${d.generation_twh.toLocaleString()} TWh</div>
+            </div>
+            <div class="tip-cell wide">
+              <div class="tip-lbl">Primary Source</div>
+              <div class="tip-val">${d.primary_source}</div>
+            </div>
+            <div class="progress-bar">
+              <div class="tip-lbl">Access</div>
+              <div class="progress-track">
+                <div class="progress-fill lit" style="width:${d.access_pct}%"></div>
+              </div>
+            </div>
+          </div>`;
+      } else {
+        tipBox.innerHTML = `
+          <div class="tip-head">
+            <span class="tip-flag">${flag}</span>
+            <span class="tip-name">${name}</span>
+            <span class="tip-badge dark">⚠ LIMITED</span>
+          </div>
+          <div class="tip-grid">
+            <div class="tip-cell">
+              <div class="tip-lbl">Access Rate</div>
+              <div class="tip-val dim">${d.access_pct}%</div>
+            </div>
+            <div class="tip-cell">
+              <div class="tip-lbl">Generation</div>
+              <div class="tip-val dim">${d.generation_twh.toLocaleString()} TWh</div>
+            </div>
+            <div class="progress-bar">
+              <div class="tip-lbl">Population with access</div>
+              <div class="progress-track">
+                <div class="progress-fill dark" style="width:${d.access_pct}%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="tip-note">Limited or unreliable electricity — IEA / World Bank 2022</div>`;
+      }
+
+      tipEl.style.display = 'block';
+      positionTip();
+    }
+
+    /* ── Globe ──────────────────────────────────────────────────────── */
+    const GEOJSON =
+      'https://raw.githubusercontent.com/vasturiano/globe.gl/master/' +
+      'example/country-boundaries/ne_110m_admin_0_countries.geojson';
+
+    const loader = document.getElementById('loader');
+    let hov = null;
+
+    fetch(GEOJSON)
+      .then(r => {
+        if (!r.ok) throw new Error('GeoJSON fetch failed');
+        return r.json();
+      })
+      .then(world => {
+        const features = world.features;
+
+        // Tally lit / dark
+        let litN = 0, darkN = 0;
+        features.forEach(f => {
+          const d = getData(f.properties.ADMIN);
+          if (!d) return;
+          d.lit ? litN++ : darkN++;
+        });
+        document.getElementById('s-lit').textContent  = litN;
+        document.getElementById('s-dark').textContent = darkN;
+
+        // Build globe
+        const globe = Globe()(document.getElementById('globe'))
+          .width(window.innerWidth)
+          .height(window.innerHeight)
+          .backgroundColor('rgba(0,0,0,0)')
+          .atmosphereColor('#2255bb')
+          .atmosphereAltitude(0.18)
+          .globeImageUrl(null)
+          .bumpImageUrl(null)
+
+          // Polygons
+          .polygonsData(features)
+          .polygonCapColor(f  => capColor(f, hov))
+          .polygonSideColor(() => C.side)
+          .polygonStrokeColor(() => C.stroke)
+          .polygonAltitude(f => altitude(f, hov))
+          .polygonLabel(() => '')
+
+          .onPolygonHover(polygon => {
+            hov = polygon || null;
+
+            // Refresh colour + altitude immediately
+            globe
+              .polygonCapColor(f => capColor(f, hov))
+              .polygonAltitude(f => altitude(f, hov));
+
+            document.body.style.cursor = polygon ? 'pointer' : 'default';
+
+            if (!polygon) {
+              tipEl.style.display = 'none';
+              globe.controls().autoRotate = true;
+            } else {
+              globe.controls().autoRotate = false;
+              showTip(polygon);
+            }
+          });
+
+        // Colour the ocean sphere
+        globe.scene().traverse(obj => {
+          if (obj.isMesh && obj.geometry &&
+              obj.geometry.parameters &&
+              obj.geometry.parameters.widthSegments >= 50) {
+            obj.material.color.setHex(0x0a1630);
+            obj.material.shininess = 0;
+          }
+        });
+
+        // Controls
+        const ctrl = globe.controls();
+        ctrl.autoRotate      = true;
+        ctrl.autoRotateSpeed = 0.32;
+        ctrl.enableZoom      = true;
+        ctrl.minDistance     = 180;
+        ctrl.maxDistance     = 520;
+        ctrl.enablePan       = false;
+
+        globe.pointOfView({ lat: 18, lng: 12, altitude: 2.35 });
+
+        // Resize — debounced to avoid rapid-fire calls during drag
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() =>
+            globe.width(window.innerWidth).height(window.innerHeight), 100);
+        });
+
+        // Reveal
+        setTimeout(() => loader.classList.add('fade'), 400);
+        setTimeout(() => loader.remove(), 1200);
+      })
+      .catch(err => {
+        console.error(err);
+        const ldTxt = loader.querySelector('.ld-text');
+        if (ldTxt) ldTxt.textContent = 'Failed to load. Please refresh.';
+      });
+
+  })();
+  </script>
+</body>
+</html>
