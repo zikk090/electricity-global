@@ -536,8 +536,7 @@
         document.getElementById('s-dark').textContent = darkN;
 
         // Build globe
-        globeInstance = Globe()(document.getElementById('globe'))
-        const globe = globeInstance;
+        const globe = Globe()(document.getElementById('globe'))
           .width(window.innerWidth)
           .height(window.innerHeight)
           .backgroundColor('rgba(0,0,0,0)')
@@ -573,12 +572,14 @@
             }
           });
 
+        globeInstance = globe;
+
         // Colour the ocean sphere
         globe.scene().traverse(obj => {
           if (obj.isMesh && obj.geometry &&
               obj.geometry.parameters &&
               obj.geometry.parameters.widthSegments >= 50) {
-            obj.material.color.setHex(0x0a1630);
+            obj.material.color.setHex(C.ocean);
             obj.material.shininess = 0;
           }
         });
