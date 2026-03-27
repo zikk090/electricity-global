@@ -223,6 +223,51 @@
       font-size: 0.72rem; letter-spacing: 0.28em;
       color: var(--muted); text-transform: uppercase;
     }
+
+    /* ── Mode toggle ─────────────────────────────────────────────────── */
+    #mode-toggle {
+      position: fixed;
+      top: 26px; right: 28px;
+      z-index: 10;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: var(--text);
+      border-radius: 20px;
+      padding: 7px 16px;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    #mode-toggle:hover { background: rgba(255,255,255,0.14); }
+
+    /* ── Light mode overrides ────────────────────────────────────────── */
+    body.light {
+      --bg:      #d6e6f5;
+      --lit:     #e8920a;
+      --lit-hover: #f5b040;
+      --dark-c:  #8faec8;
+      --dark-h:  #7a9ab8;
+      --unknown: #b8cfe0;
+      --tip-bg:  rgba(255, 255, 255, 0.97);
+      --tip-bdr: rgba(160, 110, 20, 0.28);
+      --text:    #162035;
+      --muted:   #5a7090;
+    }
+    body.light #stars { opacity: 0; pointer-events: none; }
+    body.light #header h1 { color: #162040; text-shadow: none; }
+    body.light .tip-name  { color: #162035; }
+    body.light .tip-val   { color: #162035; }
+    body.light .tip-head  { border-bottom-color: rgba(0,0,0,0.07); }
+    body.light .tip-note  { border-top-color: rgba(0,0,0,0.06); color: #6a849a; }
+    body.light .tip-card  { box-shadow: 0 4px 30px rgba(0,0,0,0.12); }
+    body.light .tip-val.dim { color: #6a849a; }
+    body.light .tip-badge.dark { color: #4a6888; border-color: rgba(60,90,130,0.28); background: rgba(60,90,130,0.08); }
+    body.light .progress-track { background: rgba(0,0,0,0.09); }
+    body.light .leg-dot.dark { border-color: #7a9ab8; }
+    body.light #globe canvas { filter: brightness(1.0) contrast(1.05) saturate(1.08); }
+    body.light #mode-toggle  { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.14); }
+    body.light #mode-toggle:hover { background: rgba(0,0,0,0.11); }
   </style>
 </head>
 <body>
@@ -246,6 +291,7 @@
     <div class="src">Data: IEA / World Bank 2022–23</div>
   </div>
 
+  <button id="mode-toggle">☀️ Light</button>
   <div id="tip"><div class="tip-card"></div></div>
 
   <div id="loader">
@@ -309,16 +355,30 @@
     }
 
     /* ── Colors & altitudes ─────────────────────────────────────────── */
-    const C = {
-      litBase:    '#FFE055',
-      litHover:   '#FFF5B0',
-      darkBase:   '#162040',
-      darkHover:  '#243060',
-      unknown:    '#0e1627',
-      unknownH:   '#1a2840',
-      side:       'rgba(0,4,20,0.55)',
-      stroke:     'rgba(255,255,255,0.045)',
+    const THEMES = {
+      dark: {
+        litBase:    '#FFE055', litHover:   '#FFF5B0',
+        darkBase:   '#162040', darkHover:  '#243060',
+        unknown:    '#0e1627', unknownH:   '#1a2840',
+        side:       'rgba(0,4,20,0.55)',
+        stroke:     'rgba(255,255,255,0.045)',
+        atmosphere: '#2255bb',
+        ocean:      0x0a1630,
+      },
+      light: {
+        litBase:    '#e8920a', litHover:   '#f5b040',
+        darkBase:   '#8faec8', darkHover:  '#7a9ab8',
+        unknown:    '#b8cfe0', unknownH:   '#a8c0d4',
+        side:       'rgba(100,150,190,0.35)',
+        stroke:     'rgba(255,255,255,0.35)',
+        atmosphere: '#4488cc',
+        ocean:      0x5a9fc0,
+      },
     };
+
+    let isDark = true;
+    let C = { ...THEMES.dark };
+    let globeInstance = null;
 
     function capColor(feat, hov) {
       const d = getData(feat.properties.ADMIN);
@@ -435,6 +495,28 @@
     const loader = document.getElementById('loader');
     let hov = null;
 
+    /* ── Mode toggle ────────────────────────────────────────────────── */
+    document.getElementById('mode-toggle').addEventListener('click', () => {
+      isDark = !isDark;
+      C = { ...THEMES[isDark ? 'dark' : 'light'] };
+      document.body.classList.toggle('light', !isDark);
+      document.getElementById('mode-toggle').textContent = isDark ? '☀️ Light' : '🌙 Dark';
+
+      if (globeInstance) {
+        globeInstance
+          .polygonCapColor(f => capColor(f, hov))
+          .polygonSideColor(() => C.side)
+          .polygonStrokeColor(() => C.stroke)
+          .atmosphereColor(C.atmosphere);
+
+        globeInstance.scene().traverse(obj => {
+          if (obj.isMesh && obj.geometry?.parameters?.widthSegments >= 50) {
+            obj.material.color.setHex(C.ocean);
+          }
+        });
+      }
+    });
+
     fetch(GEOJSON)
       .then(r => {
         if (!r.ok) throw new Error('GeoJSON fetch failed');
@@ -454,11 +536,12 @@
         document.getElementById('s-dark').textContent = darkN;
 
         // Build globe
-        const globe = Globe()(document.getElementById('globe'))
+        globeInstance = Globe()(document.getElementById('globe'))
+        const globe = globeInstance;
           .width(window.innerWidth)
           .height(window.innerHeight)
           .backgroundColor('rgba(0,0,0,0)')
-          .atmosphereColor('#2255bb')
+          .atmosphereColor(C.atmosphere)
           .atmosphereAltitude(0.18)
           .globeImageUrl(null)
           .bumpImageUrl(null)
