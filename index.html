@@ -243,31 +243,41 @@
 
     /* ── Light mode overrides ────────────────────────────────────────── */
     body.light {
-      --bg:      #d6e6f5;
-      --lit:     #e8920a;
-      --lit-hover: #f5b040;
-      --dark-c:  #8faec8;
-      --dark-h:  #7a9ab8;
-      --unknown: #b8cfe0;
-      --tip-bg:  rgba(255, 255, 255, 0.97);
-      --tip-bdr: rgba(160, 110, 20, 0.28);
-      --text:    #162035;
-      --muted:   #5a7090;
+      --bg:        #f0ece2;
+      --lit:       #d4820a;
+      --lit-hover: #e8a030;
+      --dark-c:    #c4b89a;
+      --dark-h:    #b0a488;
+      --unknown:   #ddd8cc;
+      --tip-bg:    rgba(255, 253, 248, 0.98);
+      --tip-bdr:   rgba(180, 120, 20, 0.25);
+      --text:      #2c2410;
+      --muted:     #7a6a50;
     }
     body.light #stars { opacity: 0; pointer-events: none; }
-    body.light #header h1 { color: #162040; text-shadow: none; }
-    body.light .tip-name  { color: #162035; }
-    body.light .tip-val   { color: #162035; }
-    body.light .tip-head  { border-bottom-color: rgba(0,0,0,0.07); }
-    body.light .tip-note  { border-top-color: rgba(0,0,0,0.06); color: #6a849a; }
-    body.light .tip-card  { box-shadow: 0 4px 30px rgba(0,0,0,0.12); }
-    body.light .tip-val.dim { color: #6a849a; }
-    body.light .tip-badge.dark { color: #4a6888; border-color: rgba(60,90,130,0.28); background: rgba(60,90,130,0.08); }
-    body.light .progress-track { background: rgba(0,0,0,0.09); }
-    body.light .leg-dot.dark { border-color: #7a9ab8; }
-    body.light #globe canvas { filter: brightness(1.0) contrast(1.05) saturate(1.08); }
-    body.light #mode-toggle  { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.14); }
-    body.light #mode-toggle:hover { background: rgba(0,0,0,0.11); }
+    body.light #header h1 {
+      color: #2c2410;
+      text-shadow: 0 1px 20px rgba(180,140,60,0.25);
+    }
+    body.light #header p   { color: #9a8a70; }
+    body.light .tip-name   { color: #2c2410; }
+    body.light .tip-val    { color: #2c2410; }
+    body.light .tip-val.dim { color: #9a8a70; }
+    body.light .tip-head   { border-bottom-color: rgba(0,0,0,0.07); }
+    body.light .tip-note   { border-top-color: rgba(0,0,0,0.06); color: #9a8a70; }
+    body.light .tip-card   {
+      box-shadow: 0 4px 24px rgba(80,60,20,0.14), 0 1px 3px rgba(0,0,0,0.06);
+    }
+    body.light .tip-badge.lit  { background: rgba(200,120,10,0.1); color: #b86800; border-color: rgba(200,120,10,0.3); }
+    body.light .tip-badge.dark { color: #7a6a50; border-color: rgba(100,80,40,0.25); background: rgba(100,80,40,0.07); }
+    body.light .progress-track { background: rgba(0,0,0,0.08); }
+    body.light .progress-fill.lit  { background: linear-gradient(90deg, #c07010, #e8a030); }
+    body.light .leg-dot.lit  { box-shadow: 0 0 8px rgba(200,130,10,0.5); }
+    body.light .leg-dot.dark { background: #c4b89a; border-color: #a09070; }
+    body.light #stats strong { color: #b86800; }
+    body.light #globe canvas { filter: brightness(1.02) contrast(1.06) saturate(1.12); }
+    body.light #mode-toggle  { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.13); color: #2c2410; }
+    body.light #mode-toggle:hover { background: rgba(0,0,0,0.09); }
   </style>
 </head>
 <body>
@@ -366,13 +376,13 @@
         ocean:      0x0a1630,
       },
       light: {
-        litBase:    '#e8920a', litHover:   '#f5b040',
-        darkBase:   '#8faec8', darkHover:  '#7a9ab8',
-        unknown:    '#b8cfe0', unknownH:   '#a8c0d4',
-        side:       'rgba(100,150,190,0.35)',
-        stroke:     'rgba(255,255,255,0.35)',
-        atmosphere: '#4488cc',
-        ocean:      0x5a9fc0,
+        litBase:    '#f0a010', litHover:   '#f5c040',
+        darkBase:   '#c4b89a', darkHover:  '#b0a488',
+        unknown:    '#ddd8cc', unknownH:   '#ccc8bc',
+        side:       'rgba(60,40,10,0.15)',
+        stroke:     'rgba(255,255,255,0.45)',
+        atmosphere: '#78b0e8',
+        ocean:      0x4a8fc4,
       },
     };
 
